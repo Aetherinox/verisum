@@ -47,6 +47,12 @@ ECHO.
 SET algo=SHA256
 
 :: -----------------------------------------------------------------------------------------------------
+::  define:     gpg library
+:: -----------------------------------------------------------------------------------------------------
+
+set gpg_lib=gpg
+
+:: -----------------------------------------------------------------------------------------------------
 ::  define:     directories
 :: -----------------------------------------------------------------------------------------------------
 
@@ -61,6 +67,7 @@ SET dir_output=checksums
 SET file_sha_src=%algo%.txt
 SET file_sig=%algo%.sig
 SET file_ext=asc
+SET file_cfg=cfg\config.ini
 
 :: -----------------------------------------------------------------------------------------------------
 ::  define:     libraries
@@ -81,6 +88,61 @@ SET echo=%dir_lib%"\cecho.exe"
 SET gpg_keyid=
 
 :: -----------------------------------------------------------------------------------------------------
+::  config file
+:: -----------------------------------------------------------------------------------------------------
+
+for /F "tokens=*" %%I in (%file_cfg%) do set %%I
+
+:: -----------------------------------------------------------------------------------------------------
+::  define:     gpg
+::              check if environment var GPGhome detected
+:: -----------------------------------------------------------------------------------------------------
+
+IF [%GPGHOME%]==[] (
+    cls
+    %echo%   {CF} ERROR {\n\n}{silver}
+    %echo%   You are missing the environment variable {03}GPGHOME{#}{\n}
+    %echo%   Make sure you have {fuchisa}GPG/Gpg4win{#} installed. {\n\n}
+
+    %echo%   You can install {fuchisa}GPG/Gpg4win{#} by visiting the website:{\n\n}
+    %echo%         {lime}https://gpg4win.org/{white}{\n\n\n}
+
+    %echo%   You can view your defined Windows environment variables by clicking the{\n}
+    %echo%   {03}Start button{white}, selecting {03}Run{white} and typing the command:{\n\n}
+    %echo%         {lime}rundll32 sysdm.cpl,EditEnvironmentVariables{white}{\n}
+
+    %echo% {white}{\n\n\n\n}
+
+    TITLE GPGHOME Missing [Error]
+
+    %echo%   {CF} Press any key to acknowledge error and try anyway ... {white}{\n\n\n\n}
+    PAUSE >nul
+    cls
+)
+
+:: -----------------------------------------------------------------------------------------------------
+::  define:     gpg
+::              attempt to locate gpg via where command
+:: -----------------------------------------------------------------------------------------------------
+
+WHERE /Q %gpg_lib%
+
+IF !ERRORLEVEL! NEQ 0 (
+    cls
+    %echo%   {CF} ERROR {\n\n}{silver}
+    %echo%   This script has detected that the command {03}%gpg_lib%{#} is not accessible.{\n\n}
+    %echo%   You can install {fuchisa}GPG/Gpg4win{#} by visiting the website:{\n\n}
+    %echo%         {lime}https://www.gpg4win.org/{white}{\n\n\n}
+    %echo% {white}{\n\n\n\n}
+
+    TITLE GPG Missing [Error]
+
+    %echo%   {CF} Press any key to acknowledge error and try anyway  ... {white}{\n\n\n\n}
+    PAUSE >nul
+    cls
+)
+
+:: -----------------------------------------------------------------------------------------------------
 ::  missing gpg key_id
 ::
 ::  give user a chance to manually input their gpg key if default gpg_keyid var missing.
@@ -89,12 +151,12 @@ SET gpg_keyid=
 
 IF [%gpg_keyid%]==[] (
 
-    %echo%   {CF} Please open VeriSum_Sign.bat in notepad and assign a gpg key id to gpg_keyid {white}{\n\n}
+    %echo%    Please open {03}%file_cfg%{#} in notepad and assign a gpg key id to gpg_keyid {white}{\n\n}
     %echo%   {white} You can obtain your key id by installing {03}GPG/Gpg4win{#}.{white}{\n}
     %echo%   {white} Then open {03}Windows Terminal{#} or {03}Command Prompt{#} and execute the command: {white}{\n\n}
     %echo%   {white}      gpg --list-secret-keys --keyid-format=short{white}{\n\n\n}
     %echo%   {08} Example:{white}{\n\n}
-    %echo%   {white}      {0C}SET{#} gpg_keyid={A0}AE92BC19{white}{\n\n\n}
+    %echo%   {white}      {0C}SET{#} gpg_keyid={A0} BD3DC629 {white}{\n\n\n}
 
     %echo%   {06}
     set /P v_input_keyid="Enter Key ID: "

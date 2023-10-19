@@ -65,11 +65,23 @@ SET file_sha_src=%algo%.txt
 SET file_sha_tmp=%algo%.tmp
 
 :: -----------------------------------------------------------------------------------------------------
+::  define:     defaults
+:: -----------------------------------------------------------------------------------------------------
+
+SET v_cli_cstype=
+
+:: -----------------------------------------------------------------------------------------------------
 ::  define:     libraries
 ::              DO NOT EDIT
 :: -----------------------------------------------------------------------------------------------------
 
 SET echo=%dir_lib%"\cecho.exe"
+
+:: -----------------------------------------------------------------------------------------------------
+::  config file
+:: -----------------------------------------------------------------------------------------------------
+
+for /F "tokens=*" %%I in (cfg\config.ini) do set %%I
 
 :: -----------------------------------------------------------------------------------------------------
 ::  header
@@ -95,6 +107,21 @@ if "%~1" == "" (
     if exist %dir_root% (
         SET file_src=%dir_home%%dir_root%
         %echo%   Using existing file {lime}!file_src!{white}{\n\n\n}
+
+        ( dir /b /a "!file_src!" | findstr /V "^\..*" ) > nul && (
+            echo %dir% non-empty >nul
+        ) || (
+
+            %echo% {white}
+            %echo% {CF} ERROR {white}     Folder {YELLOW}!file_src!{white} is empty{\n}{white}
+            %echo%   {white}            Must contain at least one file that doesn't start with a period.{white}{\n\n\n\n\n}
+
+            %echo%   {DF} Press any key to exit {white}{\n}
+            PAUSE >nul
+
+            Exit /B 0
+        )
+
         goto NEXT
     ) else (
         goto FAIL
@@ -126,11 +153,42 @@ endlocal
 
 :NEXT
 
+    %echo%   Would you like to create a single checksum for all files, or a checksum for each file.{white}{\n\n}
+    %echo%   {white}      {0C}1{#} Per File Checksum{white}{\n}
+    %echo%   {white}      {0C}2{#} Single Checksum{white}{\n\n}
+
+    %echo%   {06}
+    set /P v_input_cs_type="Enter Choice: "
+    %echo%   {#}{\n\n}
+
+    if [!v_input_cs_type!]==[] (
+        %echo%   {white}No choice provided, defaulting to {yellow}Per File Checksum{white}{\n\n\n\n}
+        SET v_input_cs_type=1
+    )
+
+    if /I "%v_input_cs_type%" EQU "1" (
+        SET v_cli_cstype=--all --allpath
+        GOTO GENERATE
+    )
+
+    if /I "%v_input_cs_type%" EQU "2" (
+        SET v_cli_cstype=
+        GOTO GENERATE
+    ) else (
+        %echo% {\n\n}
+        %echo%   {4F} Unrecognized Option {0E} !v_input_cs_type! {white}
+        %echo% {\n\n}{white}
+
+        goto NEXT
+    )
+
+:GENERATE
+
     :: -----------------------------------------------------------------------------------------------------
     :: Generate hash.tmp
     :: -----------------------------------------------------------------------------------------------------
 
-    call  %dir_lib%\verisum.exe "%file_src%" "%algo%" -o "%dir_output%\%file_sha_tmp%" -progress -all -allPath -rewrite -lowercase -quiet -fast -nosym -ignore *gitignore -ignore *.md -ignore *docs >nul
+    call  %dir_lib%\verisum.exe "%file_src%" "%algo%" -o "%dir_output%\%file_sha_tmp%" --progress !v_cli_cstype! --rewrite --lowercase --quiet --fast --nosym --ignore *gitignore --ignore *.md --ignore *.user --ignore *.sln --ignore *.application --ignore *.manifest --ignore *.pdb --ignore *docs >nul
 
     %echo%   {green}[ x ]{gray} Generating hash list from provided files{\n}
 
@@ -179,13 +237,13 @@ endlocal
 
     timeout /t 1 /nobreak >nul
 
-    %echo%   {\n\n}{03}    %algo%{white} Successfully Generated{\n}
-    %echo%          {5F}%dir_output%\%file_sha_src%{\n\n\n\n}{gray}
+    %echo%   {\n\n}{03}    %algo%{white} Successfully Generated{white}{\n}
+    %echo%          {5F}%dir_output%\%file_sha_src%{white}{\n\n\n\n\n}
 
     timeout /t 2 /nobreak >nul
     TITLE VeriSum - Generate (Complete)
 
-    %echo%   {CF} Press any key to close utility {white}{\n}
+    %echo%   {CF} Press any key to exit {white}{\n}
     PAUSE >nul
 
     Exit /B 0
